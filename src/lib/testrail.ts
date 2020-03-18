@@ -5,9 +5,11 @@ import { TestRailOptions, TestRailResult } from './testrail.interface';
 export class TestRail {
   private base: String;
   private runId: Number;
+  private remainingPublishAttempts: number;
 
   constructor(private options: TestRailOptions) {
     this.base = `https://${options.domain}/index.php?/api/v2`;
+    this.remainingPublishAttempts = 5;
   }
 
   public createRun(name: string, description: string) {
@@ -45,6 +47,23 @@ export class TestRail {
   }
 
   public publishResults(results: TestRailResult[]) {
+    // TODO: This prevents the results from being printed to the terminal (Lines 89-96)
+    const interval = setInterval(() => {
+      if (this.remainingPublishAttempts === 0) {
+        clearInterval(interval)
+        throw new Error('Ran out of attempts waiting for Run ID.')
+      }
+
+      if (!this.runId) {
+        this.remainingPublishAttempts--
+      } else {
+        clearInterval(interval)
+        this._publishResults(results)
+      }
+    }, 500)
+  }
+
+  _publishResults(results: TestRailResult[]) {
     axios({
       method: 'post',
       url: `${this.base}/add_results_for_cases/${this.runId}`,

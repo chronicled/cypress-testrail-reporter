@@ -6,6 +6,7 @@ var TestRail = /** @class */ (function () {
     function TestRail(options) {
         this.options = options;
         this.base = "https://" + options.domain + "/index.php?/api/v2";
+        this.remainingPublishAttempts = 5;
     }
     TestRail.prototype.createRun = function (name, description) {
         var _this = this;
@@ -41,6 +42,23 @@ var TestRail = /** @class */ (function () {
         }).catch(function (error) { return console.error(error); });
     };
     TestRail.prototype.publishResults = function (results) {
+        var _this = this;
+        // TODO: This prevents the results from being printed to the terminal (Lines 89-96)
+        var interval = setInterval(function () {
+            if (_this.remainingPublishAttempts === 0) {
+                clearInterval(interval);
+                throw new Error('Ran out of attempts waiting for Run ID.');
+            }
+            if (!_this.runId) {
+                _this.remainingPublishAttempts--;
+            }
+            else {
+                clearInterval(interval);
+                _this._publishResults(results);
+            }
+        }, 500);
+    };
+    TestRail.prototype._publishResults = function (results) {
         var _this = this;
         axios({
             method: 'post',
